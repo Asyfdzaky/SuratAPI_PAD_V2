@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class RW extends Model
 {
     use HasFactory;
-
+    protected $table = 'RW';
     protected $fillable = ['nama_rw'];
 
     public function rt()

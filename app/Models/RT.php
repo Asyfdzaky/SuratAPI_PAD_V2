@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class RT extends Model
 {
     use HasFactory;
-
+    protected $table = 'RT';
     protected $fillable = ['id_rw', 'nama_rt'];
 
     public function warga()

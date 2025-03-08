@@ -15,7 +15,7 @@ use Exception;
 
 class AuthController extends Controller
 {
-    public function store(Request $request) {
+    public function register(Request $request) {
         try {
             // Mulai transaksi database
             DB::beginTransaction();
@@ -30,19 +30,23 @@ class AuthController extends Controller
                 "phone" => "required|numeric",
                 "tempat_lahir" => "required|string",
                 "tanggal_lahir" => "required|date",
-                "id_rw" => "required|integer",
-                "id_rt" => "required|integer",
+                'id_rt' => 'required|exists:rt,id',
+                'id_rw' => 'required|exists:rw,id',
                 "alamat" => "required|string",
                 "kabupaten" => "required|string",
                 "provinsi" => "required|string",
             ]);
 
+            $rt = RT::find($request->id_rt);
+            if ($rt->id_rw != $request->id_rw) {
+                return response()->json(['error' => 'RT dan RW tidak cocok'], 400);
+            }
             // Buat user baru
             $user = User::create([
                 "email" => $request->email,
                 "password" => Hash::make($request->password),
                 "role" => "warga",
-                "status" => false,
+                "statusAkun" => false,
             ]);
 
             // Buat detail alamat
@@ -57,10 +61,9 @@ class AuthController extends Controller
             $warga = Warga::create([
                 "id_users" => $user->id,
                 "id_alamat" => $detailAlamat->id,
-                "id_rw" => $request->id_rw,
                 "id_rt" => $request->id_rt,
                 "nama" => $request->nama,
-                "nomor_kk" => $request->nomor_kk,
+                "nomor_kk" => $request->nomer_kk,
                 "nik" => $request->nik,
                 "jenis_kelamin" => $request->jenis_kelamin,
                 "phone" => $request->phone,
@@ -68,31 +71,71 @@ class AuthController extends Controller
                 "tanggal_lahir" => $request->tanggal_lahir,
             ]);
 
-            // Generate token
-            $token = $user->createToken("auth_token")->plainTextToken;
+            
 
             // Commit transaksi jika semua berhasil
             DB::commit();
 
             return response()->json([
-                "message" => "success",
+                "message" => "Registrasi berhasil! Tunggu aktivasi dari admin.",
                 "data" => [
                     "user" => $user,
                     "warga" => $warga,
-                    "token" => $token,
                 ],
-            ], 201);
+            ], 200);
         } catch (Exception $e) {
             // Jika error, rollback transaksi
             DB::rollBack();
-
-            // Catat error di log Laravel
             Log::error("Register Error: " . $e->getMessage());
-
             return response()->json([
                 "message" => "Terjadi kesalahan saat registrasi",
                 "error" => $e->getMessage(),
             ], 500);
         }
     }
+    // LOGIN USER
+    public function Login(Request $request){
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+        $user = User::where('email', $request->email)->first();
+
+        if(!$user || !Hash::check($request->password, $user->password)){
+            return response()->json([
+                'message' => 'Email atau password salah'
+            ], 401);
+        }
+        if($user->statusAkun == false){
+            return response()->json([
+                'message' => "Akun belum diaktifkan! Silakan tunggu admin."
+            ], 401);
+        }
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'message' => 'Login successful',
+            'token' => $token,
+            'user' => $user,
+        ], 200);
+    }
+     /**
+     * Logout User
+     */
+    public function logout(Request $request)
+{
+    $user = $request->user();
+
+    if (!$user) {
+        return response()->json([
+            "message" => "Unauthenticated."
+        ], 401);
+    }
+
+    $user->tokens()->delete();
+    return response()->json([
+        "message" => "Logout berhasil"
+    ], 200);
+}
+
 }

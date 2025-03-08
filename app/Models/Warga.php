@@ -8,11 +8,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Warga extends Model
 {
     use HasFactory;
-
+    protected $table = 'warga';
     protected $fillable = [
         'id_users',
         'id_alamat',
         'id_rt',
+        'id_rw',
         'nama',
         'nomor_kk',
         'nik',
@@ -45,6 +46,7 @@ class Warga extends Model
     {
         return $this->belongsTo(RT::class, 'id_rt');
     }
+
 
     /**
      * Relasi ke Pejabat RT (jika warga adalah pejabat RT)
